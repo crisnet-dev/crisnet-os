@@ -4,6 +4,8 @@ A basic Operating System **64-bit**, just the kernel, that prints text directly 
 
 ## Made with Rust 🦀 and NASM
 
+![Crisnet OS running in QEMU](./qemu-crisnet-os-running.png)
+
 ## Requirements
 
 - NASM

@@ -99,10 +99,9 @@ pub extern "C" fn crisnet_os_main() -> ! {
     crisnet_os.println(b" ");
     crisnet_os.println(b" +-----------------------------+");
     crisnet_os.println(b" +    Crisnet OS Version 0.2   + ");
-    crisnet_os.println(b" + ----------------------------+");
-    crisnet_os.println(b" +     By Crisnet Inc @ 2026   +");
+    crisnet_os.println(b" +-----------------------------+");
+    crisnet_os.println(b" +      By Crisnet @ 2026      +");
     crisnet_os.println(b" +-----------------------------+");
 
     loop {}
 }
-
