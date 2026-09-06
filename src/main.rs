@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use core::{panic::PanicInfo, result};
+use core::panic::PanicInfo;
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
@@ -35,6 +35,18 @@ impl CrisnetOS {
         }
     }
 
+    fn draw_rect(&self, rect_x: i32, rect_y: i32, width: i32, height: i32, color: u8) {
+        for y in 0..height {
+            for x in 0..width {
+                let index = (rect_y + y) as usize * Self::VGA_WIDTH + (rect_x + x) as usize;
+                unsafe {
+                    *self.vga_memory.add(index * 2) = b' ';
+                    *self.vga_memory.add(index * 2 + 1) = color;
+                }
+            }
+        }
+    }
+
     fn inb(&self, port: u16) -> u8 {
         let value: u8;
         unsafe {
@@ -53,9 +65,15 @@ impl CrisnetOS {
             core::arch::asm!(
                 "out dx, al",
                 in("dx") port,
-                in("al") value
+                in("al") value,
+                options(nostack, nomem)
             );
         }
+    }
+
+    fn disable_cursor(&self) {
+        self.outb(0x3D4, 0x0A);
+        self.outb(0x3D5, 0x20);
     }
 
     fn read_keyboard(&self) -> u8 {
@@ -78,19 +96,21 @@ impl CrisnetOS {
     }
 
     fn advance_cursor(&mut self) {
-        self.cursor_x += 1;
-        if self.cursor_x >= Self::VGA_WIDTH as u8 {
+        if self.cursor_x >= Self::VGA_WIDTH as u8 - 1 {
             self.cursor_x = 0;
             self.cursor_y += 1;
+        } else {
+            self.cursor_x += 1;
         }
     }
 
     fn jump_line(&mut self) {
         self.cursor_x = 0;
-        if self.cursor_y >= Self::VGA_HEIGHT as u8 {
+        if self.cursor_y >= Self::VGA_HEIGHT as u8 - 1 {
             self.cursor_y = Self::VGA_HEIGHT as u8 - 1;
+        } else {
+            self.cursor_y += 1;
         }
-        self.cursor_y += 1;
     }
 
     fn print_char(&mut self, c: char) {
@@ -102,8 +122,8 @@ impl CrisnetOS {
                 *self.vga_memory.add(index * 2) = c as u8;
                 *self.vga_memory.add(index * 2 + 1) =
                     ((Color::BLUE as u8) << 4) | Color::WHITE as u8;
-                self.advance_cursor();
             }
+            self.advance_cursor();
         }
     }
 
@@ -123,6 +143,8 @@ impl CrisnetOS {
 pub extern "C" fn crisnet_os_main() -> ! {
     let mut crisnet_os = CrisnetOS::new();
 
+    // crisnet_os.disable_cursor();
+
     crisnet_os.clear_screen(((Color::BLUE as u8) << 4) | Color::BLUE as u8);
 
     crisnet_os.println(b"   ____      _                _       ___  ____");
@@ -139,6 +161,8 @@ pub extern "C" fn crisnet_os_main() -> ! {
     crisnet_os.println(b" +-----------------------------+");
     crisnet_os.println(b" |     PRESS ENTER TO REBOOT   |");
     crisnet_os.println(b" +-----------------------------+");
+
+    // crisnet_os.draw_rect(0, 20, 4, 2, 0x40);
 
     loop {
         let scan_code = crisnet_os.read_keyboard();
