@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use core::panic::PanicInfo;
+use core::{panic::PanicInfo, result};
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
@@ -24,6 +24,8 @@ struct CrisnetOS {
 impl CrisnetOS {
     const VGA_WIDTH: usize = 80;
     const VGA_HEIGHT: usize = 25;
+    const KEYBOARD_STATUS_PORT: u16 = 0x64;
+    const KEYBOARD_DATA_PORT: u16 = 0x60;
 
     fn new() -> CrisnetOS {
         CrisnetOS {
@@ -31,6 +33,39 @@ impl CrisnetOS {
             cursor_y: 0,
             vga_memory: 0xb8000 as *mut u8,
         }
+    }
+
+    fn inb(&self, port: u16) -> u8 {
+        let value: u8;
+        unsafe {
+            core::arch::asm!(
+                "in al, dx",
+                in("dx") port,
+                out("al") value,
+                options(nostack, nomem)
+            );
+        }
+        value
+    }
+
+    fn outb(&self, port: u16, value: u8) {
+        unsafe {
+            core::arch::asm!(
+                "out dx, al",
+                in("dx") port,
+                in("al") value
+            );
+        }
+    }
+
+    fn read_keyboard(&self) -> u8 {
+        while (self.inb(Self::KEYBOARD_STATUS_PORT) & 0x01) == 0 {}
+        let scan_code: u8 = self.inb(Self::KEYBOARD_DATA_PORT);
+        scan_code
+    }
+
+    fn reboot_system(&self) {
+        self.outb(Self::KEYBOARD_STATUS_PORT, 0xFE);
     }
 
     fn clear_screen(&self, color: u8) {
@@ -98,10 +133,18 @@ pub extern "C" fn crisnet_os_main() -> ! {
 
     crisnet_os.println(b" ");
     crisnet_os.println(b" +-----------------------------+");
-    crisnet_os.println(b" +    Crisnet OS Version 0.2   + ");
+    crisnet_os.println(b" |    Crisnet OS Version 0.2   | ");
     crisnet_os.println(b" +-----------------------------+");
-    crisnet_os.println(b" +      By Crisnet @ 2026      +");
+    crisnet_os.println(b" |      By Crisnet @ 2026      |");
+    crisnet_os.println(b" +-----------------------------+");
+    crisnet_os.println(b" |     PRESS ENTER TO REBOOT   |");
     crisnet_os.println(b" +-----------------------------+");
 
-    loop {}
+    loop {
+        let scan_code = crisnet_os.read_keyboard();
+        if scan_code == 0x1c {
+            crisnet_os.println(b"Rebooting system...");
+            crisnet_os.reboot_system();
+        }
+    }
 }
