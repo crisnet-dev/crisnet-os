@@ -11,14 +11,14 @@ fn panic(_info: &PanicInfo) -> ! {
 #[repr(u8)]
 enum Color {
     BLUE = 0x9,
-    //GREEN = 0x2,
+    GREEN = 0x2,
     WHITE = 0x0F,
 }
 
 struct CrisnetOS {
     cursor_x: u8,
     cursor_y: u8,
-    vga_memory: *mut u8,
+    vga_memory: *mut u16,
 }
 
 impl CrisnetOS {
@@ -31,17 +31,16 @@ impl CrisnetOS {
         CrisnetOS {
             cursor_x: 0,
             cursor_y: 0,
-            vga_memory: 0xb8000 as *mut u8,
+            vga_memory: 0xb8000 as *mut u16,
         }
     }
 
-    fn draw_rect(&self, rect_x: i32, rect_y: i32, width: i32, height: i32, color: u8) {
+    fn draw_rect(&self, rect_x: i32, rect_y: i32, width: i32, height: i32, color: u16) {
         for y in 0..height {
             for x in 0..width {
                 let index = (rect_y + y) as usize * Self::VGA_WIDTH + (rect_x + x) as usize;
                 unsafe {
-                    *self.vga_memory.add(index * 2) = b' ';
-                    *self.vga_memory.add(index * 2 + 1) = color;
+                    self.vga_memory.add(index).write_volatile((color << 8) as u16 | ' ' as u16);
                 }
             }
         }
@@ -86,11 +85,10 @@ impl CrisnetOS {
         self.outb(Self::KEYBOARD_STATUS_PORT, 0xFE);
     }
 
-    fn clear_screen(&self, color: u8) {
+    fn clear_screen(&self, color: u16) {
         for i in 0..(Self::VGA_WIDTH * Self::VGA_HEIGHT) {
             unsafe {
-                *self.vga_memory.add(i * 2) = b' ';
-                *self.vga_memory.add(i * 2 + 1) = color;
+                *self.vga_memory.add(i) = (color << 8) as u16 | ' ' as u16;
             }
         }
     }
@@ -114,14 +112,13 @@ impl CrisnetOS {
     }
 
     fn print_char(&mut self, c: char) {
+        let color = (((0x9 << 4) | 0x0F) << 8) as u16;
         if c == '\n' {
             self.jump_line();
         } else {
             let index = self.cursor_y as usize * Self::VGA_WIDTH + self.cursor_x as usize;
             unsafe {
-                *self.vga_memory.add(index * 2) = c as u8;
-                *self.vga_memory.add(index * 2 + 1) =
-                    ((Color::BLUE as u8) << 4) | Color::WHITE as u8;
+                *self.vga_memory.add(index) = color | c as u16;
             }
             self.advance_cursor();
         }
@@ -145,7 +142,7 @@ pub extern "C" fn crisnet_os_main() -> ! {
 
     // crisnet_os.disable_cursor();
 
-    crisnet_os.clear_screen(((Color::BLUE as u8) << 4) | Color::BLUE as u8);
+    crisnet_os.clear_screen(((Color::BLUE as u16) << 4) | Color::BLUE as u16);
 
     crisnet_os.println(b"   ____      _                _       ___  ____");
     crisnet_os.println(b"  / ___|_ __(_)___ _ __   ___| |_    / _ \\/ ___|");
@@ -162,7 +159,7 @@ pub extern "C" fn crisnet_os_main() -> ! {
     crisnet_os.println(b" |     PRESS ENTER TO REBOOT   |");
     crisnet_os.println(b" +-----------------------------+");
 
-    // crisnet_os.draw_rect(0, 20, 4, 2, 0x40);
+    crisnet_os.draw_rect(0, 20, 10, 5, (0x2 << 4) | 0x2);
 
     loop {
         let scan_code = crisnet_os.read_keyboard();

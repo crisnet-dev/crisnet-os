@@ -15,7 +15,7 @@ start:
     ; Carrega o kernel para 0x1000
     mov bx, 0x1000
     mov ah, 0x02
-    mov al, 4
+    mov al, 7
     mov ch, 0
     mov cl, 2
     mov dh, 0

@@ -18,11 +18,14 @@ rustc \
 ld -m elf_x86_64 -T src/linker.ld -o build/kernel.elf build/kernel.o
 objcopy -O binary build/kernel.elf build/kernel.bin
 
-#size=$(wc -c < build/kernel.bin)
+size=$(wc -c < build/kernel.bin)
 #if [ "$size" -gt 1024 ]; then
 #    echo "Kernel is too large: ${size} bytes (maximum 1024 bytes)."
 #    exit 1
 #fi
+
+sector=$(((size + 511) / 512))
+echo Sector $sector
 
 #truncate -s 1024 build/kernel.bin
 nasm -f bin src/bootloader.asm -o build/boot.bin
