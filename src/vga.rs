@@ -21,7 +21,7 @@ impl VGA {
             unsafe {
                 self.vga_memory
                     .add(i)
-                    .write_volatile((0x0F << 8) as u16 | ' ' as u16);
+                    .write_volatile((0x9F << 8) as u16 | ' ' as u16);
             }
         }
     }
@@ -50,7 +50,7 @@ impl VGA {
             unsafe {
                 self.vga_memory
                     .add(index)
-                    .write_volatile((0x0F << 8) as u16 | c as u16);
+                    .write_volatile((0x9F << 8) as u16 | c as u16);
             }
             self.advance_cursor();
         }
