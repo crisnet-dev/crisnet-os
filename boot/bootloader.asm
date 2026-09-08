@@ -1,6 +1,8 @@
 bits 16
 org 0x7C00
 
+%include "build/kernel_sectors.inc"
+
 start:
     cli
     xor ax, ax
@@ -15,7 +17,7 @@ start:
     ; Carrega o kernel para 0x1000
     mov bx, 0x1000
     mov ah, 0x02
-    mov al, 7
+    mov al, KERNEL_SECTORS ; Sectors number
     mov ch, 0
     mov cl, 2
     mov dh, 0

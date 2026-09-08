@@ -3,6 +3,7 @@ set -euo pipefail
 
 rm -rf build
 mkdir -p build
+mkdir -p build/iso
 
 rustc \
   --target x86_64-unknown-none \
@@ -15,22 +16,18 @@ rustc \
   -o build/kernel.o \
   src/main.rs
 
-ld -m elf_x86_64 -T src/linker.ld -o build/kernel.elf build/kernel.o
+ld -m elf_x86_64 -T boot/linker.ld -o build/kernel.elf build/kernel.o
 objcopy -O binary build/kernel.elf build/kernel.bin
 
 size=$(wc -c < build/kernel.bin)
-#if [ "$size" -gt 1024 ]; then
-#    echo "Kernel is too large: ${size} bytes (maximum 1024 bytes)."
-#    exit 1
-#fi
-
 sector=$(((size + 511) / 512))
-echo Sector $sector
+echo Kernel sectors $sector
 
-#truncate -s 1024 build/kernel.bin
-nasm -f bin src/bootloader.asm -o build/boot.bin
-cat build/boot.bin build/kernel.bin > build/crisnet-os.img
+echo "KERNEL_SECTORS equ $sector" > build/kernel_sectors.inc
 
-echo "Built: build/crisnet-os.img"
+nasm -f bin boot/bootloader.asm -o build/boot.bin
+cat build/boot.bin build/kernel.bin > build/iso/crisnet-os.img
 
-qemu-system-x86_64 -drive format=raw,file=build/crisnet-os.img
+echo "Built: build/iso/crisnet-os.img"
+
+qemu-system-x86_64 -drive format=raw,file=build/iso/crisnet-os.img
